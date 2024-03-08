@@ -1,0 +1,134 @@
+function [S,W,Z,X,E_S_temp,tau_S_l2,delta] = functionUEgrouping(M,beta_matrix,pilotIndex,tau,thres)
+
+% clear;
+% clc;
+% 
+% 
+% L=20; %Number of APs 
+% K=10;%Number of UEs in the network
+% 
+% tau=7;%Number of pilots per coherence block
+% si_canc=0;
+% Kd=K;
+% 
+% [U,~,~]=svd(randn(tau,tau)); %generating othogonal pilot sequences.
+% 
+% 
+% 
+% Phii=zeros(tau,K);
+% pilotIndex = zeros(1,K);
+%         for k=1:K
+%             Point=randi([1,tau]);
+%             pilotIndex(k)=Point;
+%             Phii(:,k)=U(:,Point);
+%         end
+% 
+% 
+% [~,beta_matrix,~,~,~,~] = LSF(L,K,Kd,si_canc); %Large scale fading
+
+
+%Beta = repelem(beta_matrix,M,1);
+
+[rows, columns]=size(beta_matrix);
+L=rows;
+K=columns;
+
+S = zeros(L,K);
+W = zeros(L,K);
+
+Z = zeros(K,L);
+X = zeros(K,L);
+
+E_S_temp = zeros(L,tau);
+
+
+
+beta_sele_matrix = zeros(L,K);
+
+%thres = 0.5;
+
+
+
+
+for l = 1:L
+    [beta_des, beta_des_ind] = sort(beta_matrix(l,:),'descend');
+    temp1 = 0;
+    for k = 1:K
+        temp1 = temp1 + beta_des(k)/sum(beta_matrix(l,:));
+        %if temp1 > thres && k~=1
+        if temp1 >= thres    
+            break;
+        else
+            beta_sele_matrix(l,beta_des_ind(k)) = 1;
+        end
+    end
+end
+
+for l = 1:L
+    for  k = 1:K
+        if beta_sele_matrix(l,k)==1 
+            S(l,k) = 1;
+            Z(k,l) = 1;
+            for k1 = 1:K
+                if pilotIndex(k1)==pilotIndex(k)
+                    S(l,k1) = 1;
+                    Z(k1,l) = 1;
+                end  
+            end
+            E_S_temp(l,pilotIndex(k)) = 1;
+        end
+    end
+end
+
+I_temp1 = ones(L,K);
+W = I_temp1 - S;
+I_temp2 = ones(K,L);
+X = I_temp2 - Z;
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%Finding tau_S_L
+ delta = zeros(L, K);
+ for k = 1:K
+     [~,Z_k_ind] = find(Z(k,:) == 1);
+     Z_k_ind_length = length(Z_k_ind);
+     if Z_k_ind_length > 0
+        for l_Z_k = 1:Z_k_ind_length
+            E_S_l_ind = find(E_S_temp(Z_k_ind(l_Z_k), :) ~= 0);
+            tau_S_l2 = length(E_S_l_ind);
+            
+            % Set delta(Z_k_ind(l_Z_k), k) = 1;
+        end
+    else
+        % No APs in Z for UE k, set tau_S_l2 to 0
+        tau_S_l2 = 0;
+    end
+
+ end
+
+
+
+for k = 1:K
+    [~, Z_k_ind] = find(Z(k, :) == 1);
+    Z_k_ind_length = length(Z_k_ind);
+
+    % Set delta to 1 for members of Z_k
+    delta(Z_k_ind, k) = 1;
+
+    [~, M_k_ind] = find(X(k, :) == 1);
+    M_k_ind_length = length(M_k_ind);
+
+    % Set delta to 0 for members of M_k
+    delta(M_k_ind, k) = 0;
+end
+
+%New try
+
+
+
+
+
+
+
+end
+
